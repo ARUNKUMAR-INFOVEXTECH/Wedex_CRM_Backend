@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HallFlow — API Tester</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f11;
+      --surface: #1a1a1f;
+      --surface2: #22222a;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.14);
+      --text: #f0eff5;
+      --muted: #888795;
+      --accent: #7c6fe8;
+      --accent2: #a99ef2;
+      --accent-bg: rgba(124,111,232,0.12);
+      --success: #3db87a;
+      --success-bg: rgba(61,184,122,0.1);
+      --danger: #e05252;
+      --danger-bg: rgba(224,82,82,0.1);
+      --warn: #e09c35;
+      --warn-bg: rgba(224,156,53,0.1);
+      --radius: 10px;
+      --font: 'DM Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --sans: 'Inter', 'DM Sans', system-ui, sans-serif;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600&display=swap');
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+
+    /* ---- LAYOUT ---- */
+    .app { display: grid; grid-template-columns: 260px 1fr 1fr; grid-template-rows: 56px 1fr; height: 100vh; overflow: hidden; }
+
+    /* ---- TOPBAR ---- */
+    .topbar {
+      grid-column: 1/-1;
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { font-weight: 600; font-size: 16px; letter-spacing: -0.3px; color: var(--text); }
+    .logo span { color: var(--accent2); }
+    .pill { font-size: 11px; background: var(--accent-bg); color: var(--accent2); padding: 3px 9px; border-radius: 99px; border: 1px solid rgba(124,111,232,0.25); font-family: var(--font); }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .base-url-wrap { display: flex; align-items: center; gap: 8px; }
+    .base-url-wrap label { font-size: 12px; color: var(--muted); }
+    #baseUrl { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); padding: 6px 10px; border-radius: 6px; font-family: var(--font); font-size: 12px; width: 240px; }
+    .token-badge { font-size: 11px; padding: 4px 10px; border-radius: 6px; font-family: var(--font); }
+    .token-badge.active { background: var(--success-bg); color: var(--success); border: 1px solid rgba(61,184,122,0.2); }
+    .token-badge.none { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+    /* ---- SIDEBAR ---- */
+    .sidebar { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 0; }
+    .sidebar-section { padding: 8px 16px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 16px; cursor: pointer; border-left: 2px solid transparent;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .nav-item:hover { background: var(--surface2); }
+    .nav-item.active { background: var(--accent-bg); border-left-color: var(--accent); }
+    .nav-item .method { font-family: var(--font); font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 4px; min-width: 38px; text-align: center; }
+    .m-post { background: rgba(61,184,122,0.15); color: var(--success); }
+    .m-get  { background: rgba(55,138,221,0.15); color: #5ba8f5; }
+    .m-patch { background: rgba(224,156,53,0.15); color: var(--warn); }
+    .m-delete { background: rgba(224,82,82,0.15); color: var(--danger); }
+    .nav-item .nav-label { font-size: 13px; color: var(--text); }
+
+    /* ---- REQUEST PANEL ---- */
+    .request-panel { padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 16px; }
+    .panel-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+    .endpoint-bar {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius);
+      padding: 10px 14px;
+    }
+    .method-tag { font-family: var(--font); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; white-space: nowrap; }
+    .endpoint-path { font-family: var(--font); font-size: 13px; color: var(--accent2); flex: 1; }
+
+    .section-label { font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 6px; }
+    textarea {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 12px;
+      font-family: var(--font); font-size: 12px; resize: vertical; min-height: 120px;
+      line-height: 1.6; outline: none; transition: border-color 0.15s;
+    }
+    textarea:focus { border-color: var(--accent); }
+
+    .send-btn {
+      background: var(--accent); color: #fff; border: none; cursor: pointer;
+      padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;
+      font-family: var(--sans); letter-spacing: 0.2px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .send-btn:hover { opacity: 0.88; }
+    .send-btn:active { transform: scale(0.98); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .auth-notice { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+    .dot.red { background: var(--danger); }
+
+    /* ---- RESPONSE PANEL ---- */
+    .response-panel { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+
+    .status-bar {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface2); border-radius: 8px; padding: 10px 14px;
+    }
+    .status-code { font-family: var(--font); font-size: 14px; font-weight: 600; }
+    .s-ok  { color: var(--success); }
+    .s-err { color: var(--danger); }
+    .s-warn { color: var(--warn); }
+    .status-time { font-size: 12px; color: var(--muted); margin-left: auto; font-family: var(--font); }
+
+    .json-block {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px; font-family: var(--font); font-size: 12px; line-height: 1.7;
+      white-space: pre-wrap; word-break: break-all; color: #c9c4f5;
+      max-height: calc(100vh - 200px); overflow-y: auto;
+    }
+    .json-key { color: #9b8fee; }
+    .json-str { color: #7ec8a0; }
+    .json-num { color: #e0a46e; }
+    .json-bool { color: #5ba8f5; }
+    .json-null { color: var(--muted); }
+
+    .copy-btn {
+      align-self: flex-start; background: var(--surface2); border: 1px solid var(--border2);
+      color: var(--muted); cursor: pointer; padding: 5px 12px; border-radius: 6px;
+      font-size: 12px; transition: color 0.15s;
+    }
+    .copy-btn:hover { color: var(--text); }
+
+    .placeholder-msg { color: var(--muted); font-size: 13px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; gap: 8px; text-align: center; }
+    .placeholder-msg .icon { font-size: 32px; opacity: 0.3; }
+
+    /* ---- QUICK FILL CHIPS ---- */
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font-size: 11px; padding: 4px 10px; border-radius: 6px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      color: var(--muted); cursor: pointer; font-family: var(--font);
+      transition: background 0.1s, color 0.1s;
+    }
+    .chip:hover { background: var(--accent-bg); color: var(--accent2); border-color: rgba(124,111,232,0.3); }
+
+    .divider { border: none; border-top: 1px solid var(--border); }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="logo">Hall<span>Flow</span></div>
+    <div class="pill">API Tester</div>
+    <div class="topbar-right">
+      <div class="base-url-wrap">
+        <label>Base URL</label>
+        <input id="baseUrl" type="text" value="http://localhost:3000" />
+      </div>
+      <div id="tokenBadge" class="token-badge none">No token</div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Auth</div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="POST" data-path="/auth/create-super-admin" data-template="createSuperAdmin">
+      <span class="method m-post">POST</span><span class="nav-label">Create super admin</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="POST" data-path="/auth/login" data-template="login">
+      <span class="method m-post">POST</span><span class="nav-label">Login</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="GET" data-path="/auth/profile" data-template="empty">
+      <span class="method m-get">GET</span><span class="nav-label">Get profile</span>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">Super Admin — Halls</div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="POST" data-path="/admin/halls" data-template="createHall">
+      <span class="method m-post">POST</span><span class="nav-label">Create hall</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="GET" data-path="/admin/halls" data-template="empty">
+      <span class="method m-get">GET</span><span class="nav-label">Get all halls</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="GET" data-path="/admin/halls/:id" data-template="hallId">
+      <span class="method m-get">GET</span><span class="nav-label">Get hall by ID</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="PATCH" data-path="/admin/halls/:id/suspend" data-template="hallId">
+      <span class="method m-patch">PATCH</span><span class="nav-label">Suspend hall</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="PATCH" data-path="/admin/halls/:id/activate" data-template="hallId">
+      <span class="method m-patch">PATCH</span><span class="nav-label">Activate hall</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="GET" data-path="/admin/stats" data-template="empty">
+      <span class="method m-get">GET</span><span class="nav-label">Hall stats</span>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">Packages</div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="GET" data-path="/packages" data-template="empty">
+      <span class="method m-get">GET</span><span class="nav-label">List packages</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="POST" data-path="/packages" data-template="createPackage">
+      <span class="method m-post">POST</span><span class="nav-label">Create package</span>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">Subscriptions</div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="GET" data-path="/subscriptions/my" data-template="empty">
+      <span class="method m-get">GET</span><span class="nav-label">My subscription</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="GET" data-path="/subscriptions/:hall_id" data-template="hallId">
+      <span class="method m-get">GET</span><span class="nav-label">Get subscription</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="PUT" data-path="/subscriptions/:hall_id/renew" data-template="renewSub">
+      <span class="method m-patch">PUT</span><span class="nav-label">Renew subscription</span>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">Hall Owner — Staff</div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="POST" data-path="/staff" data-template="createStaff">
+      <span class="method m-post">POST</span><span class="nav-label">Create staff</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="GET" data-path="/staff" data-template="empty">
+      <span class="method m-get">GET</span><span class="nav-label">Get all staff</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="PATCH" data-path="/staff/:id" data-template="updateStaff">
+      <span class="method m-patch">PATCH</span><span class="nav-label">Update staff role</span>
+    </div>
+    <div class="nav-item" onclick="selectEndpoint(this)" data-method="DELETE" data-path="/staff/:id" data-template="staffId">
+      <span class="method m-delete">DEL</span><span class="nav-label">Delete staff</span>
+    </div>
+  </nav>
+
+  <!-- REQUEST PANEL -->
+  <section class="request-panel">
+    <div class="panel-title">Request</div>
+
+    <div class="endpoint-bar" id="endpointBar">
+      <span class="method-tag m-get" id="methodTag" style="background:rgba(55,138,221,0.15);color:#5ba8f5">GET</span>
+      <span class="endpoint-path" id="endpointPath">Select an endpoint →</span>
+    </div>
+
+    <!-- URL override for :id paths -->
+    <div id="urlOverrideWrap" style="display:none">
+      <div class="section-label">Full URL (replace :id etc.)</div>
+      <input id="urlOverride" type="text" style="width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:var(--font);font-size:12px;outline:none;" />
+    </div>
+
+    <div id="bodyWrap">
+      <div class="section-label">Body (JSON)</div>
+      <div class="chips" id="quickFill" style="margin-bottom:8px"></div>
+      <textarea id="bodyInput" spellcheck="false" placeholder="{}"></textarea>
+    </div>
+
+    <div class="auth-notice">
+      <div class="dot" id="authDot" style="background:var(--danger)"></div>
+      <span id="authStatus">No token — login first</span>
+    </div>
+
+    <button class="send-btn" id="sendBtn" onclick="sendRequest()">Send Request</button>
+  </section>
+
+  <!-- RESPONSE PANEL -->
+  <section class="response-panel">
+    <div class="panel-title">Response</div>
+    <div id="responseArea">
+      <div class="placeholder-msg">
+        <div class="icon">⚡</div>
+        <div>Select an endpoint and send a request</div>
+        <div style="font-size:11px;opacity:0.5">Responses appear here</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  let currentToken = null;
+  let currentMethod = 'GET';
+  let currentPath = '';
+
+  const templates = {
+    empty: null,
+    login: { email: 'superadmin@hallflow.com', password: 'yourpassword' },
+    createSuperAdmin: {
+      name: 'Super Admin',
+      email: 'superadmin@hallflow.com',
+      password: 'StrongPass@123',
+      bootstrap_secret: 'change_this_to_a_random_secret'
+    },
+    createHall: {
+      hall_name: 'Lakshmi Mahal',
+      owner_name: 'Ravi Kumar',
+      owner_email: 'ravi@lakshmimaha.com',
+      password: 'HallOwner@123',
+      phone: '9876543210',
+      city: 'Chennai',
+      address: '12, Anna Nagar, Chennai',
+      package_id: '9f8dd92f-02ad-440d-af8e-b13d01f69b0c'
+    },
+    hallId: null,
+    createStaff: {
+      name: 'Staff Member',
+      email: 'staff@lakshmimaha.com',
+      password: 'Staff@123',
+      role: 'staff'
+    },
+    updateStaff: { role: 'manager' },
+    staffId: null,
+    createPackage: {
+      name: 'Enterprise',
+      price: 12000,
+      billing_cycle: 'monthly',
+      max_users: 20,
+      max_bookings: 500,
+      features: { reports: true, vendors: true, priority_support: true, staff_management: true }
+    },
+    renewSub: { months: 1 }
+  };
+
+  const methodColors = {
+    GET:    { bg: 'rgba(55,138,221,0.15)', color: '#5ba8f5' },
+    POST:   { bg: 'rgba(61,184,122,0.15)', color: '#3db87a' },
+    PATCH:  { bg: 'rgba(224,156,53,0.15)', color: '#e09c35' },
+    PUT:    { bg: 'rgba(124,111,232,0.15)', color: '#a99ef2' },
+    DELETE: { bg: 'rgba(224,82,82,0.15)', color: '#e05252' }
+  };
+
+  function selectEndpoint(el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+
+    currentMethod = el.dataset.method;
+    currentPath = el.dataset.path;
+    const tpl = el.dataset.template;
+
+    const mc = methodColors[currentMethod] || methodColors.GET;
+    const tag = document.getElementById('methodTag');
+    tag.textContent = currentMethod;
+    tag.style.background = mc.bg;
+    tag.style.color = mc.color;
+    document.getElementById('endpointPath').textContent = currentPath;
+
+    const hasBody = ['POST','PUT','PATCH'].includes(currentMethod);
+    document.getElementById('bodyWrap').style.display = hasBody ? 'block' : 'none';
+
+    const hasId = currentPath.includes(':');
+    const urlWrap = document.getElementById('urlOverrideWrap');
+    if (hasId) {
+      urlWrap.style.display = 'block';
+      document.getElementById('urlOverride').value =
+        document.getElementById('baseUrl').value + currentPath;
+    } else {
+      urlWrap.style.display = 'none';
+    }
+
+    if (hasBody && templates[tpl]) {
+      document.getElementById('bodyInput').value = JSON.stringify(templates[tpl], null, 2);
+    } else {
+      document.getElementById('bodyInput').value = '';
+    }
+
+    buildQuickFills(tpl);
+  }
+
+  function buildQuickFills(tpl) {
+    const qf = document.getElementById('quickFill');
+    qf.innerHTML = '';
+    if (tpl === 'login') {
+      addChip(qf, 'Super admin creds', () => {
+        document.getElementById('bodyInput').value = JSON.stringify(templates.createSuperAdmin, null, 2);
+      });
+    }
+    if (tpl === 'createHall') {
+      ['9f8dd92f-02ad-440d-af8e-b13d01f69b0c','35176152-65c9-428e-a1f0-123193c0d4da','aaedca45-e0d9-4a66-b908-a1ade0661e39'].forEach((id, i) => {
+        const names = ['Basic','Pro','Premium'];
+        addChip(qf, names[i], () => {
+          const body = JSON.parse(document.getElementById('bodyInput').value || '{}');
+          body.package_id = id;
+          document.getElementById('bodyInput').value = JSON.stringify(body, null, 2);
+        });
+      });
+    }
+    if (tpl === 'createStaff') {
+      addChip(qf, 'Set as manager', () => {
+        const body = JSON.parse(document.getElementById('bodyInput').value || '{}');
+        body.role = 'manager';
+        document.getElementById('bodyInput').value = JSON.stringify(body, null, 2);
+      });
+    }
+  }
+
+  function addChip(container, label, fn) {
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.textContent = label;
+    c.onclick = fn;
+    container.appendChild(c);
+  }
+
+  function updateAuthStatus() {
+    const badge = document.getElementById('tokenBadge');
+    const dot = document.getElementById('authDot');
+    const status = document.getElementById('authStatus');
+    if (currentToken) {
+      badge.className = 'token-badge active';
+      badge.textContent = 'Token active';
+      dot.style.background = 'var(--success)';
+      status.textContent = 'Token attached to all requests';
+    } else {
+      badge.className = 'token-badge none';
+      badge.textContent = 'No token';
+      dot.style.background = 'var(--danger)';
+      status.textContent = 'No token — login first';
+    }
+  }
+
+  async function sendRequest() {
+    const base = document.getElementById('baseUrl').value.replace(/\/$/, '');
+    const hasId = currentPath.includes(':');
+    let url = hasId
+      ? document.getElementById('urlOverride').value
+      : base + currentPath;
+
+    if (!url) return;
+
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (currentToken) headers['Authorization'] = 'Bearer ' + currentToken;
+
+    const hasBody = ['POST','PUT','PATCH'].includes(currentMethod);
+    let body = undefined;
+    if (hasBody) {
+      try { body = JSON.parse(document.getElementById('bodyInput').value || '{}'); }
+      catch(e) { showError('Invalid JSON in body'); btn.disabled = false; btn.textContent = 'Send Request'; return; }
+    }
+
+    const t0 = Date.now();
+    try {
+      const res = await fetch(url, {
+        method: currentMethod,
+        headers,
+        body: hasBody ? JSON.stringify(body) : undefined
+      });
+      const elapsed = Date.now() - t0;
+      const data = await res.json().catch(() => ({}));
+
+      if (data.token) {
+        currentToken = data.token;
+        updateAuthStatus();
+      }
+
+      renderResponse(res.status, elapsed, data);
+    } catch(err) {
+      renderFetchError(err.message);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Send Request';
+  }
+
+  function renderResponse(status, ms, data) {
+    const statusClass = status >= 200 && status < 300 ? 's-ok' : status >= 400 ? 's-err' : 's-warn';
+    const statusText = status >= 200 && status < 300 ? 'OK' : 'Error';
+    const json = syntaxHighlight(JSON.stringify(data, null, 2));
+
+    document.getElementById('responseArea').innerHTML = `
+      <div class="status-bar">
+        <span class="status-code ${statusClass}">${status}</span>
+        <span style="font-size:12px;color:var(--muted)">${statusText}</span>
+        <span class="status-time">${ms}ms</span>
+      </div>
+      <button class="copy-btn" onclick="copyJson()">Copy JSON</button>
+      <div class="json-block" id="jsonOutput">${json}</div>
+    `;
+    window._lastJson = JSON.stringify(data, null, 2);
+  }
+
+  function renderFetchError(msg) {
+    document.getElementById('responseArea').innerHTML = `
+      <div class="status-bar">
+        <span class="status-code s-err">ERR</span>
+        <span style="font-size:12px;color:var(--muted)">Network error</span>
+      </div>
+      <div class="json-block" style="color:var(--danger)">${msg}\n\nMake sure your backend is running and CORS is enabled.</div>
+    `;
+  }
+
+  function showError(msg) {
+    document.getElementById('responseArea').innerHTML = `<div class="json-block" style="color:var(--danger)">${msg}</div>`;
+  }
+
+  function copyJson() {
+    navigator.clipboard.writeText(window._lastJson || '').then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy JSON', 1500);
+    });
+  }
+
+  function syntaxHighlight(json) {
+    return json
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+        let cls = 'json-num';
+        if (/^"/.test(match)) cls = /:$/.test(match) ? 'json-key' : 'json-str';
+        else if (/true|false/.test(match)) cls = 'json-bool';
+        else if (/null/.test(match)) cls = 'json-null';
+        return `<span class="${cls}">${match}</span>`;
+      });
+  }
+
+  updateAuthStatus();
+</script>
+</body>
+</html>
