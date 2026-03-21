@@ -14,7 +14,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://wedexcrm.vercel.app"  // your netlify URL
+    "https://wedexmarriagehallcrm.netlify.app"  // your netlify URL
   ],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
