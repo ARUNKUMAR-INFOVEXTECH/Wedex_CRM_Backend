@@ -2,8 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./config/swagger");
+;
 
 // ---- Phase 1–4 Routes ----
 const authRoutes = require("./routes/authRoutes");
@@ -41,7 +40,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(helmet());
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 
 /* ---- Phase 1–4 ---- */
 app.use("/auth", authRoutes);
