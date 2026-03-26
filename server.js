@@ -29,7 +29,8 @@ app.use(cors({
 
     "http://localhost:3000",
 
-    "https://infovexweddinghallcrm.netlify.app"  // your netlify URL
+    "https://infovexweddinghallcrm.netlify.app",
+    "https://hallflow2.netlify.app"
 
   ],
 
